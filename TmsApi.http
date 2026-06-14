@@ -7,3 +7,106 @@ Accept: application/json
 
 GET {{TmsApi_HostAddress}}/api/assessments/results
 Accept: application/json
+
+###
+
+GET {{TmsApi_HostAddress}}/api/enrollments/
+Accept: application/json
+
+###
+
+
+
+###
+// enrollment testing
+POST {{TmsApi_HostAddress}}/api/enrollments/
+Content-Type: application/json
+Accept: application/json
+
+{
+    "studentId": "S001",
+    "courseCode": "CS101"
+}
+
+
+###
+GET http://localhost:5026/api/enrollments/9655d31b
+
+###
+DELETE http://localhost:5026/api/enrollments/9655d31b
+
+###
+GET http://localhost:5026/api/enrollments
+###
+GET http://localhost:5026/api/error
+
+###
+//student testing
+GET http://localhost:5026/api/students
+
+###
+POST http://localhost:5026/api/students
+Content-Type: application/json
+
+{
+    "name": "Etsub Beza",
+    "gpa": 3.8
+}
+
+###
+GET http://localhost:5026/api/students/df162c10
+
+###
+DELETE http://localhost:5026/api/students/df162c10
+
+###
+GET http://localhost:5026/api/students/df162c10
+
+// Course Testing
+###
+GET http://localhost:5026/api/courses
+
+###
+POST http://localhost:5026/api/courses
+Content-Type: application/json
+
+{
+    "title": "Web Development",
+    "capacity": 40
+}
+
+###
+GET http://localhost:5026/api/courses/ee066ea8
+
+###
+DELETE http://localhost:5026/api/courses/ee066ea8
+
+###
+GET http://localhost:5026/api/courses/ee066ea8
+
+// Assessment Testing
+###
+GET http://localhost:5026/api/assessments
+
+###
+POST http://localhost:5026/api/assessments
+Content-Type: application/json
+
+{
+    "title": "Midterm Quiz",
+    "kind": "quiz",
+    "score": 92
+}
+
+###
+GET http://localhost:5026/api/assessments/80f91621
+
+###
+DELETE http://localhost:5026/api/assessments/80f91621
+
+###
+GET http://localhost:5026/api/assessments/80f91621
+
+//excercise 7
+###
+GET http://localhost:5026/api/error
