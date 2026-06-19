@@ -110,3 +110,6 @@ GET http://localhost:5026/api/assessments/80f91621
 //excercise 7
 ###
 GET http://localhost:5026/api/error
+
+// MODULE 5 SESSION 1
+
