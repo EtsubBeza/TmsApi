@@ -22,6 +22,7 @@ public class ReportsController(TmsDbContext context) : ControllerBase
 
 
 
+
     // 2. Courses with most enrollments
     [HttpGet("course-enrollments")]
     public async Task<IActionResult> CourseEnrollments()
@@ -38,6 +39,7 @@ public class ReportsController(TmsDbContext context) : ControllerBase
 
         return Ok(list);
     }
+
 
 
 
@@ -60,8 +62,8 @@ public class ReportsController(TmsDbContext context) : ControllerBase
 
 
 
+
     // 4. Students with zero enrollments
-    // Approach A: NOT EXISTS
     [HttpGet("students-without-enrollments")]
     public async Task<IActionResult> StudentsWithoutEnrollments()
     {
@@ -72,6 +74,76 @@ public class ReportsController(TmsDbContext context) : ControllerBase
 
 
         return Ok(list);
+    }
+
+
+
+
+
+
+    // EXERCISE 3 - TODO 1
+    // Pagination
+    // page size = 20
+    // OrderBy -> Skip -> Take
+  [HttpGet("students-page")]
+public async Task<IActionResult> StudentsPage(
+    int page,
+    CancellationToken cancellationToken)
+{
+
+    if (page < 1)
+    {
+        page = 1;
+    }
+
+
+    int pageSize = 20;
+
+
+    var students = await context.Students
+
+        .OrderBy(s => s.Name)
+
+        .Skip((page - 1) * pageSize)
+
+        .Take(pageSize)
+
+        .ToListAsync(cancellationToken);
+
+
+    return Ok(students);
+}
+
+
+
+    // EXERCISE 3 - TODO 2
+    // Top 5 courses by enrollment count
+    [HttpGet("top-courses")]
+    public async Task<IActionResult> TopCourses(
+        CancellationToken cancellationToken)
+    {
+
+
+        var courses = await context.Courses
+
+            .GroupBy(c => c.Title)
+
+            .Select(g => new
+            {
+                CourseTitle = g.Key,
+
+                EnrollmentCount = g.Count()
+            })
+
+            .OrderByDescending(x => x.EnrollmentCount)
+
+            .Take(5)
+
+            .ToListAsync(cancellationToken);
+
+
+
+        return Ok(courses);
     }
 
 }

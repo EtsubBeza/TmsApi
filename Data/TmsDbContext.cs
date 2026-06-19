@@ -8,6 +8,15 @@ public class TmsDbContext : DbContext
     {
     }
 
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+
+    modelBuilder.ApplyConfigurationsFromAssembly(
+        typeof(TmsDbContext).Assembly);
+
+}
+
+
 
     public DbSet<Student> Students { get; set; }
 
@@ -20,3 +29,4 @@ public class TmsDbContext : DbContext
 
     public DbSet<Certificate> Certificates { get; set; }
 }
+
