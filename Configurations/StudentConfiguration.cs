@@ -9,8 +9,11 @@ public class StudentConfiguration : IEntityTypeConfiguration<Student>
     public void Configure(EntityTypeBuilder<Student> builder)
     {
 
+        builder.Property<DateTime>("LastUpdated")
+    .HasDefaultValueSql("CURRENT_TIMESTAMP");
         builder.HasKey(s => s.Id);
 
+builder.HasQueryFilter(s => !s.IsDeleted);
 
         builder.Property(s => s.RegistrationNumber)
             .IsRequired()

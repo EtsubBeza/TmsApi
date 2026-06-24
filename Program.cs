@@ -36,13 +36,13 @@ builder.Services.AddAuthentication(options =>
 
 // added in session 2
 
-builder.Services.AddSingleton<EnrollmentWorker>();
-builder.Services.AddSingleton<IEnrollmentService, EnrollmentService>();
+builder.Services.AddScoped<EnrollmentWorker>();
+builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 
 //added after session 3 as homework
-builder.Services.AddSingleton<IStudentService, StudentService>();
-builder.Services.AddSingleton<ICourseService, CourseService>();
-builder.Services.AddSingleton<IAssessmentService, AssessmentService>();
+builder.Services.AddScoped<IStudentService, StudentService>();
+builder.Services.AddScoped<ICourseService, CourseService>();
+builder.Services.AddScoped<IAssessmentService, AssessmentService>();
 //
 
 // added in m5 s1
@@ -131,8 +131,24 @@ app.MapGet("/api/error", () =>
 // Seed test data at startup
 using (var scope = app.Services.CreateScope())
 {
+    
 var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
 context.Database.Migrate(); // Applies any pending migrations; keeps migration history intact
+
+var report = await context.Students
+    .AsNoTracking()
+    .Select(s => new
+    {
+        s.Name,
+        EnrollmentCount = s.Enrollments.Count
+    })
+    .ToListAsync();
+
+foreach (var r in report)
+{
+    Console.WriteLine($"{r.Name}: {r.EnrollmentCount} enrollments");
+}
+
 if (!context.Students.Any())
 {
 var students = new List<Student>

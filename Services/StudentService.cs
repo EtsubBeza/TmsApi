@@ -12,8 +12,11 @@ public interface IStudentService
 
     Task<IReadOnlyList<StudentRecord>> GetAllAsync();
 
+    Task<IReadOnlyList<StudentRecord>> GetAllIncludingDeletedAsync();
+
     Task<bool> DeleteAsync(string id);
 }
+
 
 
 
@@ -49,7 +52,6 @@ public class StudentService : IStudentService
 
             .FirstOrDefaultAsync(
                 s => s.Name == name);
-
 
 
 
@@ -94,9 +96,13 @@ public class StudentService : IStudentService
             GPA = (decimal)(gpa ?? 0),
 
 
-            IsActive = true
+            IsActive = true,
+
+
+            IsDeleted = false
 
         };
+
 
 
 
@@ -109,10 +115,12 @@ public class StudentService : IStudentService
 
 
 
+
         _logger.LogInformation(
             "Created student {StudentName} with id {StudentId}",
             name,
             student.Id);
+
 
 
 
@@ -151,6 +159,7 @@ public class StudentService : IStudentService
 
 
 
+
         if(student is null)
         {
 
@@ -161,6 +170,7 @@ public class StudentService : IStudentService
 
             return null;
         }
+
 
 
 
@@ -178,6 +188,8 @@ public class StudentService : IStudentService
         );
 
     }
+
+
 
 
 
@@ -217,14 +229,52 @@ public class StudentService : IStudentService
 
 
 
+    // Admin only - includes soft deleted students
+    public async Task<IReadOnlyList<StudentRecord>> GetAllIncludingDeletedAsync()
+    {
+
+
+        return await _context.Students
+
+            .IgnoreQueryFilters()
+
+            .Select(s => new StudentRecord(
+
+                s.Id.ToString(),
+
+                s.Name,
+
+                DateTime.UtcNow,
+
+                (double?)s.GPA
+
+            ))
+
+            .ToListAsync();
+
+    }
+
+
+
+
+
+
+
+
+
+    // Soft delete
     public async Task<bool> DeleteAsync(string id)
     {
 
 
         var student = await _context.Students
 
+            .IgnoreQueryFilters()
+
             .FirstOrDefaultAsync(
                 s => s.Id.ToString() == id);
+
+
 
 
 
@@ -243,7 +293,9 @@ public class StudentService : IStudentService
 
 
 
-        _context.Students.Remove(student);
+
+        student.IsDeleted = true;
+
 
 
         await _context.SaveChangesAsync();
@@ -251,9 +303,12 @@ public class StudentService : IStudentService
 
 
 
+
         _logger.LogInformation(
-            "Deleted student {StudentId}",
+            "Soft deleted student {StudentId}",
             id);
+
+
 
 
 
@@ -262,6 +317,8 @@ public class StudentService : IStudentService
     }
 
 }
+
+
 
 
 
