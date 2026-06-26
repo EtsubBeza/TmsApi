@@ -2,7 +2,8 @@
 // Inside EnrollmentWorker.cs...
 
 using Microsoft.Extensions.DependencyInjection;
-
+using TmsApi.Interfaces;
+using TmsApi.Services;
 public class EnrollmentWorker(IServiceScopeFactory scopeFactory)
 {
     public void ProcessBatch()

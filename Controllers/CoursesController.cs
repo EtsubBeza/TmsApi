@@ -1,6 +1,6 @@
 // created after session 3 as homework
 using Microsoft.AspNetCore.Mvc;
-
+using TmsApi.Interfaces;
 [ApiController]
 [Route("api/courses")]
 public class CoursesController(ICourseService courseService) : ControllerBase

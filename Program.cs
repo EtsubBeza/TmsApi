@@ -3,6 +3,8 @@
 using Microsoft.EntityFrameworkCore;
 using TmsApi.Data;
 using TmsApi.Entities;
+using TmsApi.Interfaces;
+using TmsApi.Services;
 //
 
 //added in session 3 exc 7

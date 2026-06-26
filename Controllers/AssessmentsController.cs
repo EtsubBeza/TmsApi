@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-
+using TmsApi.Interfaces;
 [ApiController]
 [Route("api/assessments")]
 public class AssessmentsController(

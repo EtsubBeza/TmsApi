@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using TmsApi.Interfaces;
 [ApiController]
 [Route("api/enrollments")]
 public class EnrollmentsController(IEnrollmentService enrollmentService) : ControllerBase
