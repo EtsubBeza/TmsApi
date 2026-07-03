@@ -5,6 +5,7 @@ using TmsApi.Data;
 using TmsApi.Entities;
 using TmsApi.Interfaces;
 using TmsApi.Services;
+using TmsApi.Exceptions;
 //
 
 //added in session 3 exc 7
@@ -38,18 +39,23 @@ builder.Services.AddAuthentication(options =>
 
 // added in session 2
 
-builder.Services.AddScoped<EnrollmentWorker>();
+
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 
 //added after session 3 as homework
 builder.Services.AddScoped<IStudentService, StudentService>();
-builder.Services.AddScoped<ICourseService, CourseService>();
+
 builder.Services.AddScoped<IAssessmentService, AssessmentService>();
 //
 
+builder.Services.AddScoped<ICourseService, CourseService>();
+
+//added in M6 Session 1
+builder.Services.AddProblemDetails();
+builder.Services.AddOpenApi();
+//
 // added in m5 s1
 // Register TmsDbContext scoped for incoming HTTP requests
-
 builder.Services.AddDbContext<TmsDbContext>(options =>
 options.UseNpgsql(builder.Configuration.GetConnectionString("TmsDatabase"))
 .LogTo(Console.WriteLine, LogLevel.Information) // Log SQL to output window
@@ -164,9 +170,9 @@ new() { RegistrationNumber = "TMS-2026-0005", Name = "EvanWright", GPA = 2.5m, I
 context.Students.AddRange(students);
 var courses = new List<Course>
 {
-new() { Code = "CS-101", Title = "Introduction to ComputerScience", Capacity = 30 },
-new() { Code = "CS-201", Title = "Data Structures and Algorithms", Capacity = 25 },
-new() { Code = "MAT-101", Title = "Calculus I", Capacity =40 }
+new() { Code = "CS-101", Title = "Introduction to ComputerScience", MaxCapacity = 30 },
+new() { Code = "CS-201", Title = "Data Structures and Algorithms", MaxCapacity = 25 },
+new() { Code = "MAT-101", Title = "Calculus I", MaxCapacity =40 }
 };
 context.Courses.AddRange(courses);
 context.SaveChanges();

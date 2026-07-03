@@ -1,38 +1,58 @@
 using Microsoft.AspNetCore.Mvc;
+using TmsApi.Dtos;
 using TmsApi.Interfaces;
-[ApiController]
-[Route("api/enrollments")]
-public class EnrollmentsController(IEnrollmentService enrollmentService) : ControllerBase
-{
-// GET/api/enrollments returns all enrollment records
-[HttpGet]
-public async Task<IActionResult> GetAll()
-{
-var enrollments = await enrollmentService.GetAllAsync();
-return Ok(enrollments);
-}
-// GET/api/enrollments/{id} returns one or 404
-[HttpGet("{id}")]
-public async Task<IActionResult> GetById(string id)
-{
-var record = await enrollmentService.GetByIdAsync(id);
-return record is not null ? Ok(record) : NotFound();
-}
-// addded in session 3
-// POST /api/enrollments creates and returns 201 with Location header
-[HttpPost]
-public async Task<IActionResult> Create([FromBody] CreateEnrollmentRequest request)
-{
-var record = await enrollmentService.EnrollAsync(request.StudentId, request.CourseCode);
-return CreatedAtAction(nameof(GetById), new { id = record.Id }, record);
-}
-public record CreateEnrollmentRequest(string StudentId, string CourseCode);
 
-[HttpDelete("{id}")]
-public async Task<IActionResult> Delete(string id)
+namespace TmsApi.Controllers;
+
+[ApiController]
+[Route("api/courses/{courseId:int}/enrollments")]
+public class EnrollmentsController(
+    ICourseService courseService,
+    IEnrollmentService enrollmentService)
+    : ControllerBase
 {
-var deleted = await enrollmentService.DeleteAsync(id);
-return deleted ? NoContent() : NotFound();
+    [HttpGet("{id:int}", Name = nameof(GetEnrollment))]
+    public async Task<IActionResult> GetEnrollment(
+        int courseId,
+        int id,
+        CancellationToken ct)
+    {
+        var enrollment = await enrollmentService.GetByIdAsync(courseId, id, ct);
+
+        return enrollment is not null
+            ? Ok(enrollment)
+            : NotFound();
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> EnrollStudent(
+        int courseId,
+        EnrollStudentRequest request,
+        CancellationToken ct)
+    {
+        // 1. Check course exists
+        var course = await courseService.GetByIdAsync(courseId, ct);
+
+        if (course is null)
+            return NotFound();
+
+        // 2. Capacity check
+        if (course.EnrollmentCount >= course.MaxCapacity)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Course is full",
+                Detail = $"Course '{course.Title}' has reached its maximum capacity of {course.MaxCapacity}.",
+                Status = StatusCodes.Status409Conflict
+            });
+        }
+
+        // 3. Create enrollment
+        var enrollment = await enrollmentService.CreateAsync(courseId, request, ct);
+
+        return CreatedAtAction(
+            nameof(GetEnrollment),
+            new { courseId, id = enrollment.Id },
+            enrollment);
+    }
 }
-}
-public class TmsDatabaseException(string message) : Exception(message);

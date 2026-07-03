@@ -1,121 +1,56 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TmsApi.Data;
+using TmsApi.Dtos;
 using TmsApi.Entities;
 using TmsApi.Interfaces;
-using TmsApi.Records;
 
 namespace TmsApi.Services;
 
-public class CourseService : ICourseService
+public class CourseService(
+    TmsDbContext context,
+    ILogger<CourseService> logger) : ICourseService
 {
-    private readonly TmsDbContext _context;
-    private readonly ILogger<CourseService> _logger;
+    public Task<CourseResponseDto?> GetByIdAsync(
+        int id,
+        CancellationToken ct) =>
+        context.Courses
+            .AsNoTracking()
+            .Where(c => c.Id == id)
+            .Select(c => new CourseResponseDto(
+                c.Id,
+                c.Code,
+                c.Title,
+                c.MaxCapacity,
+                c.Enrollments.Count))
+            .FirstOrDefaultAsync(ct);
 
-    public CourseService(
-        TmsDbContext context,
-        ILogger<CourseService> logger)
+    public async Task<CourseResponseDto> CreateAsync(
+        CreateCourseRequest request,
+        CancellationToken ct)
     {
-        _context = context;
-        _logger = logger;
-    }
-
-    public async Task<CourseRecord> CreateAsync(
-        string title,
-        int capacity)
-    {
-        var existing = await _context.Courses
-            .FirstOrDefaultAsync(c => c.Title == title);
-
-        if (existing is not null)
-        {
-            _logger.LogWarning(
-                "Duplicate course {CourseTitle} already exists",
-                title);
-
-            return new CourseRecord(
-                existing.Id.ToString(),
-                existing.Title,
-                existing.Capacity,
-                DateTime.UtcNow);
-        }
-
         var course = new Course
         {
-            Code = Guid.NewGuid().ToString("N")[..8],
-            Title = title,
-            Capacity = capacity
+            Code = request.Code,
+            Title = request.Title,
+            MaxCapacity = request.MaxCapacity
         };
 
-        _context.Courses.Add(course);
+        context.Courses.Add(course);
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync(ct);
 
-        _logger.LogInformation(
-            "Created course {CourseTitle}",
-            title);
+        logger.LogInformation(
+            "Created course {CourseId} ({Code})",
+            course.Id,
+            course.Code);
 
-        return new CourseRecord(
-            course.Id.ToString(),
-            course.Title,
-            course.Capacity,
-            DateTime.UtcNow);
+        return (await GetByIdAsync(course.Id, ct))!;
     }
-
-    public async Task<CourseRecord?> GetByIdAsync(string id)
-    {
-        var course = await _context.Courses
-            .FirstOrDefaultAsync(c => c.Id.ToString() == id);
-
-        if (course is null)
-        {
-            _logger.LogWarning(
-                "Course {CourseId} not found",
-                id);
-
-            return null;
-        }
-
-        return new CourseRecord(
-            course.Id.ToString(),
-            course.Title,
-            course.Capacity,
-            DateTime.UtcNow);
-    }
-
-    public async Task<IReadOnlyList<CourseRecord>> GetAllAsync()
-    {
-        return await _context.Courses
-            .Select(c => new CourseRecord(
-                c.Id.ToString(),
-                c.Title,
-                c.Capacity,
-                DateTime.UtcNow))
-            .ToListAsync();
-    }
-
-    public async Task<bool> DeleteAsync(string id)
-    {
-        var course = await _context.Courses
-            .FirstOrDefaultAsync(c => c.Id.ToString() == id);
-
-        if (course is null)
-        {
-            _logger.LogWarning(
-                "Delete failed. Course {CourseId} not found",
-                id);
-
-            return false;
-        }
-
-        _context.Courses.Remove(course);
-
-        await _context.SaveChangesAsync();
-
-        _logger.LogInformation(
-            "Deleted course {CourseId}",
-            id);
-
-        return true;
-    }
+    public Task<bool> CodeExistsAsync(
+    string code,
+    CancellationToken ct) =>
+    context.Courses
+        .AsNoTracking()
+        .AnyAsync(c => c.Code == code, ct);
 }

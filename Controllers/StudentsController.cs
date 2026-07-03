@@ -1,37 +1,29 @@
 using Microsoft.AspNetCore.Mvc;
+using TmsApi.Dtos;
 using TmsApi.Interfaces;
+
 [ApiController]
 [Route("api/students")]
 public class StudentsController(IStudentService studentService) : ControllerBase
 {
-
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
         var students = await studentService.GetAllAsync();
-
         return Ok(students);
     }
-
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(string id)
     {
         var student = await studentService.GetByIdAsync(id);
-
-        return student is not null 
-            ? Ok(student) 
-            : NotFound();
+        return student is not null ? Ok(student) : NotFound();
     }
 
-
     [HttpPost]
-    public async Task<IActionResult> Create(
-        [FromBody] CreateStudentRequest request)
+    public async Task<IActionResult> Create(CreateStudentRequest request)
     {
-        var student = await studentService.CreateAsync(
-            request.Name,
-            request.Gpa);
+        var student = await studentService.CreateAsync(request);
 
         return CreatedAtAction(
             nameof(GetById),
@@ -39,20 +31,10 @@ public class StudentsController(IStudentService studentService) : ControllerBase
             student);
     }
 
-
-    // Soft delete
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(string id)
     {
         var deleted = await studentService.DeleteAsync(id);
-
-        return deleted 
-            ? NoContent() 
-            : NotFound();
+        return deleted ? NoContent() : NotFound();
     }
-
-
-    public record CreateStudentRequest(
-        string Name,
-        double? Gpa);
 }

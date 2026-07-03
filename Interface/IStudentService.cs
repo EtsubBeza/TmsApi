@@ -1,16 +1,14 @@
-using TmsApi.Records;
+using TmsApi.Dtos;
 
 namespace TmsApi.Interfaces;
 
 public interface IStudentService
 {
-    Task<StudentRecord> CreateAsync(string name, double? gpa);
+    Task<StudentResponseDto?> GetByIdAsync(string id);
 
-    Task<StudentRecord?> GetByIdAsync(string id);
+    Task<IReadOnlyList<StudentResponseDto>> GetAllAsync();
 
-    Task<IReadOnlyList<StudentRecord>> GetAllAsync();
-
-    Task<IReadOnlyList<StudentRecord>> GetAllIncludingDeletedAsync();
+    Task<StudentResponseDto> CreateAsync(CreateStudentRequest request);
 
     Task<bool> DeleteAsync(string id);
 }
