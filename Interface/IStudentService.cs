@@ -6,7 +6,9 @@ public interface IStudentService
 {
     Task<StudentResponseDto?> GetByIdAsync(string id);
 
-    Task<IReadOnlyList<StudentResponseDto>> GetAllAsync();
+    Task<PagedResponse<StudentResponseDto>> GetStudentsAsync(
+        PagedRequest request,
+        CancellationToken ct);
 
     Task<StudentResponseDto> CreateAsync(CreateStudentRequest request);
 

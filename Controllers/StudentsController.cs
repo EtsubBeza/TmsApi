@@ -7,12 +7,14 @@ using TmsApi.Interfaces;
 public class StudentsController(IStudentService studentService) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetAll()
-    {
-        var students = await studentService.GetAllAsync();
-        return Ok(students);
-    }
+public async Task<IActionResult> GetStudents(
+    [FromQuery] PagedRequest request,
+    CancellationToken ct)
+{
+    var result = await studentService.GetStudentsAsync(request, ct);
 
+    return Ok(result);
+}
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(string id)
     {

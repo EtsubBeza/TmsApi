@@ -81,4 +81,74 @@ public class StudentService : IStudentService
 
         return true;
     }
+
+    public async Task<PagedResponse<StudentResponseDto>> GetStudentsAsync(
+    PagedRequest request,
+    CancellationToken ct)
+{
+    IQueryable<Student> query = _context.Students
+        .AsNoTracking()
+        .Where(s => !s.IsDeleted);
+
+
+    // Search filter
+    if (!string.IsNullOrWhiteSpace(request.Search))
+    {
+        query = query.Where(s =>
+            EF.Functions.ILike(
+                s.Name,
+                $"%{request.Search}%")
+            ||
+            EF.Functions.ILike(
+                s.RegistrationNumber,
+                $"%{request.Search}%"));
+    }
+
+
+    // Count BEFORE pagination
+    var totalCount = await query.CountAsync(ct);
+
+
+    // Sorting
+    query = request.OrderBy switch
+    {
+        "RegistrationNumber" =>
+            request.Descending
+            ? query.OrderByDescending(s => s.RegistrationNumber)
+            : query.OrderBy(s => s.RegistrationNumber),
+
+
+        "GPA" =>
+            request.Descending
+            ? query.OrderByDescending(s => s.GPA)
+            : query.OrderBy(s => s.GPA),
+
+
+        _ =>
+            request.Descending
+            ? query.OrderByDescending(s => s.Name)
+            : query.OrderBy(s => s.Name)
+    };
+
+
+    var items = await query
+        .Skip((request.Page - 1) * request.PageSize)
+        .Take(request.PageSize)
+        .Select(s => new StudentResponseDto(
+            s.Id,
+            s.RegistrationNumber,
+            s.Name,
+            (double)s.GPA,
+            s.IsActive))
+        .ToListAsync(ct);
+
+
+    return new PagedResponse<StudentResponseDto>
+    {
+        Items = items,
+        TotalCount = totalCount,
+        Page = request.Page,
+        PageSize = request.PageSize
+    };
+}
 }
