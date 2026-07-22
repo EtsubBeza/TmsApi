@@ -2,11 +2,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using TmsApi.Application.DTOs;
 using TmsApi.Application.Interfaces;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 
 namespace TmsApi.Api.Controllers;
 
 [ApiController]
 [Route("api/courses")]
+[ApiExplorerSettings(IgnoreApi = true)]
 [Tags("Courses")]
 [Produces("application/json")]
 [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]

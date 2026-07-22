@@ -1,42 +1,65 @@
-//Module 4 Session 1
-//added in m5 s1
+// Module 4 Session 1
+// added in m5 s1
 using Microsoft.EntityFrameworkCore;
 using TmsApi.Infrastructure.Persistence;
 using TmsApi.Domain.Entities;
 using TmsApi.Application.Interfaces;
-using TmsApi.Infrastructure.Persistence;
 using TmsApi.Api.Exceptions;
 using TmsApi.Api.Filters;
 using TmsApi.Application.DTOs;
-using TmsApi.Infrastructure.Persistence;
 using TmsApi.Infrastructure.Persistence.Services;
 using TmsApi.Api.Authentication;
 using TmsApi.Application.Options;
 using TmsApi.Api.Middleware;
 using TmsApi.Infrastructure.Persistence.Seed;
-//
 
-//added in session 3 exc 7
+// added in session 3 exc 7
 using Scalar.AspNetCore;
-//
+
 using Microsoft.AspNetCore.Authentication;
+using Asp.Versioning;
 
 var builder = WebApplication.CreateBuilder(args);
 
 
-
-// added in session3
+// Controllers + Filters
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add<AuditLogFilter>();
 });
+
 builder.Services.AddProblemDetails();
 
-//added in session 3 exc 7
-builder.Services.AddOpenApi();
 
-//
-// Services
+// Versioned OpenAPI
+builder.Services.AddOpenApi("v1", options =>
+{
+    options.ShouldInclude = description =>
+        description.GroupName == "v1";
+});
+
+builder.Services.AddOpenApi("v2", options =>
+{
+    options.ShouldInclude = description =>
+        description.GroupName == "v2";
+});
+
+
+// API Versioning
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+    options.ApiVersionReader = new UrlSegmentApiVersionReader();
+})
+.AddApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
+
+
 // Authentication + Authorization
 builder.Services.AddAuthentication(options =>
 {
@@ -48,77 +71,81 @@ builder.Services.AddAuthentication(options =>
     null
 );
 
-// added in session 2
 
-
+// Services
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
-
-//added after session 3 as homework
 builder.Services.AddScoped<IStudentService, StudentService>();
-
 builder.Services.AddScoped<IAssessmentService, AssessmentService>();
-//
-
 builder.Services.AddScoped<ICourseService, CourseService>();
 
-//added in M6 Session 1
-builder.Services.AddProblemDetails();
-builder.Services.AddOpenApi();
-//
-// added in m5 s1
-// Register TmsDbContext scoped for incoming HTTP requests
+
+// Database
 builder.Services.AddDbContext<TmsDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("TmsDatabase")));
-//
 
+
+// Options
 builder.Services.AddOptions<PaymentOptions>()
     .BindConfiguration("Payments")
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+
+// DI validation
 builder.Host.UseDefaultServiceProvider(options =>
 {
     options.ValidateScopes = true;
     options.ValidateOnBuild = true;
 });
 
-//
 
 builder.Services.AddAuthorization();
 
+
 var app = builder.Build();
 
-//added in session 3 exc 7
-// Development: expose OpenAPI and Scalar
-// Production: use exception handler
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-    app.MapScalarApiReference();
-}
-else
-{
-    app.UseExceptionHandler();
-}
 
-// Request logging middleware should be first
-// Middleware pipeline
+// OpenAPI + Scalar
+app.MapOpenApi();
+
+app.MapScalarApiReference(options =>
+{
+    options.WithTitle("TMS API Reference")
+           .WithTheme(ScalarTheme.DeepSpace)
+           .WithDefaultHttpClient(
+                ScalarTarget.CSharp,
+                ScalarClient.HttpClient);
+
+    options.AddDocument("v1", "API Version 1.0");
+    options.AddDocument("v2", "API Version 2.0");
+});
+
+
+// Exception handling
+app.UseExceptionHandler();
+
+
+// Request logging middleware
 app.UseMiddleware<RequestLoggingMiddleware>();
+
 
 app.UseHttpsRedirection();
 
-// TODO 1
 app.UseRouting();
 
-// TODO 2
+
+// V1 Deprecation headers
+app.UseMiddleware<V1DeprecationMiddleware>();
+
+
 app.UseAuthentication();
+
 app.UseAuthorization();
 
-//added in session 3 exc 6
 app.UseStatusCodePages();
 
-// TODO 3
+
 // Protected endpoint
 app.MapGet("/api/assessments/results", () =>
 {
@@ -131,10 +158,12 @@ app.MapGet("/api/assessments/results", () =>
 })
 .RequireAuthorization();
 
-//added in session 3
+
+// Controllers
 app.MapControllers();
 
-//added in session 3 exc 6
+
+// Error testing endpoint
 app.MapGet("/api/error", () =>
 {
     throw new TmsDatabaseException(
@@ -142,8 +171,7 @@ app.MapGet("/api/error", () =>
 });
 
 
-
-
+// Development seeding
 if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
@@ -152,5 +180,6 @@ if (app.Environment.IsDevelopment())
 
     await DataSeeder.SeedAsync(context);
 }
-//
+
+
 app.Run();
