@@ -1,36 +1,41 @@
 // Module 4 Session 1
 // added in m5 s1
 
+using System.Threading.RateLimiting;
+
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.EntityFrameworkCore;
+
 using MediatR;
 using FluentValidation;
 
-using TmsApi.Application.Behaviors;
-using TmsApi.Application.Enrollments.Commands;
+using Asp.Versioning;
 
-using TmsApi.Api.ExceptionHandlers;
-
-using Microsoft.EntityFrameworkCore;
-
-using TmsApi.Infrastructure.Persistence;
-using TmsApi.Domain.Entities;
-using TmsApi.Application.Interfaces;
-using TmsApi.Api.Exceptions;
-using TmsApi.Api.Filters;
-using TmsApi.Application.DTOs;
-using TmsApi.Infrastructure.Persistence.Services;
-using TmsApi.Api.Authentication;
-using TmsApi.Application.Options;
-using TmsApi.Api.Middleware;
-using TmsApi.Infrastructure.Persistence.Seed;
-
-// Scalar
 using Scalar.AspNetCore;
 
-using Microsoft.AspNetCore.Authentication;
-using Asp.Versioning;
+using Microsoft.Extensions.Caching.Hybrid;
+
+using TmsApi.Application.Behaviors;
+using TmsApi.Application.Enrollments.Commands;
+using TmsApi.Application.Interfaces;
+using TmsApi.Application.DTOs;
+using TmsApi.Application.Options;
+
+using TmsApi.Api.ExceptionHandlers;
+using TmsApi.Api.Exceptions;
+using TmsApi.Api.Filters;
+using TmsApi.Api.Authentication;
+using TmsApi.Api.Middleware;
+using TmsApi.Api.RateLimiting;
+
+using TmsApi.Infrastructure.Persistence;
+using TmsApi.Infrastructure.Persistence.Services;
+using TmsApi.Infrastructure.Persistence.Seed;
 
 
 var builder = WebApplication.CreateBuilder(args);
+
 
 
 // ===============================
@@ -50,6 +55,7 @@ builder.Services.AddControllers(options =>
 builder.Services.AddProblemDetails();
 
 
+
 // ===============================
 // CQRS + MediatR
 // ===============================
@@ -59,25 +65,34 @@ builder.Services.AddMediatR(cfg =>
         typeof(EnrollStudentCommand).Assembly));
 
 
+
+// ===============================
 // FluentValidation
+// ===============================
 
 builder.Services.AddValidatorsFromAssembly(
     typeof(EnrollStudentValidator).Assembly);
 
 
+
+// ===============================
 // Pipeline Behaviors
-// IMPORTANT: Logging must be registered first
+// ===============================
 
 builder.Services.AddTransient(
     typeof(IPipelineBehavior<,>),
     typeof(LoggingBehavior<,>));
+
 
 builder.Services.AddTransient(
     typeof(IPipelineBehavior<,>),
     typeof(ValidationBehavior<,>));
 
 
+
+// ===============================
 // Global Exception Handler
+// ===============================
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
@@ -108,9 +123,11 @@ builder.Services.AddOpenApi("v2", options =>
 
 builder.Services.AddApiVersioning(options =>
 {
-    options.DefaultApiVersion = new ApiVersion(1, 0);
+    options.DefaultApiVersion =
+        new ApiVersion(1, 0);
 
-    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.AssumeDefaultVersionWhenUnspecified =
+        true;
 
     options.ReportApiVersions = true;
 
@@ -155,6 +172,163 @@ builder.Services.AddScoped<IAssessmentService, AssessmentService>();
 
 builder.Services.AddScoped<ICourseService, CourseService>();
 
+builder.Services.AddScoped<ICachedCourseService, CachedCourseService>();
+
+
+
+// ===============================
+// Hybrid Cache
+// ===============================
+
+builder.Services.AddHybridCache(options =>
+{
+    options.DefaultEntryOptions =
+        new HybridCacheEntryOptions
+        {
+            Expiration = TimeSpan.FromMinutes(10),
+
+            LocalCacheExpiration =
+                TimeSpan.FromMinutes(2)
+        };
+});
+
+
+
+// ===============================
+// Rate Limiting
+// ===============================
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.GlobalLimiter =
+        PartitionedRateLimiter.Create<HttpContext, string>(
+            httpContext =>
+            {
+                var (partitionKey, tier) =
+                    ApiKeyResolver.Resolve(httpContext);
+
+
+                return tier switch
+                {
+                    ApiKeyTier.Paid =>
+                        RateLimitPartition.GetTokenBucketLimiter(
+                            $"paid:{partitionKey}",
+                            _ => new TokenBucketRateLimiterOptions
+                            {
+                                TokenLimit = 200,
+
+                                TokensPerPeriod = 100,
+
+                                ReplenishmentPeriod =
+                                    TimeSpan.FromSeconds(10),
+
+                                QueueLimit = 0,
+
+                                AutoReplenishment = true
+                            }),
+
+
+                    ApiKeyTier.Free =>
+                        RateLimitPartition.GetTokenBucketLimiter(
+                            $"free:{partitionKey}",
+                            _ => new TokenBucketRateLimiterOptions
+                            {
+                                TokenLimit = 30,
+
+                                TokensPerPeriod = 10,
+
+                                ReplenishmentPeriod =
+                                    TimeSpan.FromSeconds(10),
+
+                                QueueLimit = 0,
+
+                                AutoReplenishment = true
+                            }),
+
+
+                    _ =>
+                        RateLimitPartition.GetTokenBucketLimiter(
+                            $"anon:{partitionKey}",
+                            _ => new TokenBucketRateLimiterOptions
+                            {
+                                TokenLimit = 10,
+
+                                TokensPerPeriod = 5,
+
+                                ReplenishmentPeriod =
+                                    TimeSpan.FromSeconds(10),
+
+                                QueueLimit = 0,
+
+                                AutoReplenishment = true
+                            })
+                };
+            });
+
+
+
+    options.RejectionStatusCode =
+        StatusCodes.Status429TooManyRequests;
+
+
+
+    options.OnRejected = async (context, ct) =>
+    {
+        var retryAfter = "10";
+
+
+        if (context.Lease.TryGetMetadata(
+            MetadataName.RetryAfter,
+            out var retry))
+        {
+            retryAfter =
+                ((int)retry.TotalSeconds).ToString();
+        }
+
+
+        context.HttpContext.Response.Headers.RetryAfter =
+            retryAfter;
+
+
+        context.HttpContext.Response.ContentType =
+            "application/problem+json";
+
+
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new
+            {
+                Title = "Rate limit exceeded",
+
+                Detail =
+                    $"Too many requests. Retry after {retryAfter} seconds.",
+
+                Status =
+                    StatusCodes.Status429TooManyRequests,
+
+                Type =
+                    "https://tms.local/errors/rate_limit_exceeded"
+            },
+            ct);
+    };
+
+
+
+    // ===============================
+    // Transcript Concurrency Limiter
+    // ===============================
+
+    options.AddConcurrencyLimiter(
+        "transcripts",
+        limiterOptions =>
+        {
+            limiterOptions.PermitLimit = 5;
+
+            limiterOptions.QueueLimit = 20;
+
+            limiterOptions.QueueProcessingOrder =
+                QueueProcessingOrder.OldestFirst;
+        });
+});
 
 
 // ===============================
@@ -163,7 +337,8 @@ builder.Services.AddScoped<ICourseService, CourseService>();
 
 builder.Services.AddDbContext<TmsDbContext>(options =>
     options.UseNpgsql(
-        builder.Configuration.GetConnectionString("TmsDatabase")));
+        builder.Configuration.GetConnectionString(
+            "TmsDatabase")));
 
 
 
@@ -242,7 +417,8 @@ app.UseHttpsRedirection();
 app.UseRouting();
 
 
-// V1 Deprecation headers
+app.UseRateLimiter();
+
 
 app.UseMiddleware<V1DeprecationMiddleware>();
 
@@ -302,7 +478,8 @@ if (app.Environment.IsDevelopment())
     using var scope = app.Services.CreateScope();
 
 
-    var context = scope.ServiceProvider
+    var context =
+        scope.ServiceProvider
         .GetRequiredService<TmsDbContext>();
 
 

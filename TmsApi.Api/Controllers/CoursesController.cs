@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using TmsApi.Application.DTOs;
 using TmsApi.Application.Interfaces;
+using TmsApi.Infrastructure.Persistence.Services;
 
 namespace TmsApi.Api.Controllers;
 
@@ -13,6 +14,7 @@ namespace TmsApi.Api.Controllers;
 [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
 public class CoursesController(
     ICourseService courseService,
+    ICachedCourseService cachedCourseService,
     LinkGenerator linkGenerator) : ControllerBase
 {
 
@@ -79,7 +81,6 @@ public class CoursesController(
                 "DELETE"),
 
 
-            // New CQRS enrollment endpoint
             new(
                 "/api/v2/enrollments",
                 "enrollments",
@@ -141,6 +142,11 @@ public class CoursesController(
 
         var result =
             await courseService.CreateAsync(request, ct);
+
+
+
+        // Invalidate HybridCache after database changes
+        await cachedCourseService.InvalidateCourseCacheAsync(ct);
 
 
 
