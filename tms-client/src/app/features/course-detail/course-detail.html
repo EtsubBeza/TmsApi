@@ -1,0 +1,39 @@
+<h2>Course Details</h2>
+
+@if (course) {
+
+  <h3>{{ course.title }}</h3>
+
+  <p>
+    Code: {{ course.code }}
+  </p>
+
+  <p>
+    Capacity:
+    {{ course.maxCapacity }}
+  </p>
+
+  <p>
+    Enrolled:
+    {{ course.enrollmentCount }}
+    /
+    {{ course.maxCapacity }}
+  </p>
+
+  <p>
+    Status:
+    {{
+      course.enrollmentCount >= course.maxCapacity
+        ? 'Full'
+        : 'Accepting enrollments'
+    }}
+  </p>
+
+}
+@else {
+
+  <p>
+    Course not found.
+  </p>
+
+}
