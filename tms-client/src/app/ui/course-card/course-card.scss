@@ -1,0 +1,33 @@
+.course-card {
+  padding: 20px;
+  margin: 15px 0;
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+  transition: transform 0.2s ease;
+}
+
+
+.course-card:hover {
+  transform: translateY(-4px);
+}
+
+
+h3 {
+  margin-top: 0;
+}
+
+
+button {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: none;
+  background: #16a34a;
+  color: white;
+  cursor: pointer;
+}
+
+
+button:hover {
+  background: #15803d;
+}
