@@ -1,7 +1,7 @@
 <h2>Available Courses</h2>
 
 <div class="course-grid">
-  @for (course of courses; track course.id) {
+ @for(course of courses(); track course.id) {
     <tms-course-card [course]="course"></tms-course-card>
   }
 </div>

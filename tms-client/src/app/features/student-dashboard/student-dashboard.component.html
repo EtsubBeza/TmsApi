@@ -6,10 +6,35 @@
 
   <p>Graduation Status: {{ graduationStatus() }}</p>
 
+
   <button (click)="registerForClass()">
     Register for a Class (+3 credits)
   </button>
 
+
 </div>
 
-<tms-course-list></tms-course-list>
+
+@if (coursesResource.isLoading()) {
+
+  <p>Loading courses...</p>
+
+}
+
+
+@if (coursesResource.error()) {
+
+  <p>
+    Failed to load courses.
+  </p>
+
+}
+
+
+@if (coursesResource.value(); as courses) {
+
+  <tms-course-list
+    [courses]="courses">
+  </tms-course-list>
+
+}

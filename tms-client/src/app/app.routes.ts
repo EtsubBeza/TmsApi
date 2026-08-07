@@ -32,4 +32,10 @@ export const routes: Routes = [
     pathMatch: 'full',
   },
 
+  {
+  path: 'enroll',
+  loadComponent: () =>
+    import('./features/enrollment-form/enrollment-form')
+      .then(m => m.EnrollmentFormComponent)
+}
 ];
