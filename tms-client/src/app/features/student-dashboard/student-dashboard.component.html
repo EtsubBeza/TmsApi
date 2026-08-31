@@ -6,21 +6,17 @@
 
   <p>Graduation Status: {{ graduationStatus() }}</p>
 
-
   <button (click)="registerForClass()">
     Register for a Class (+3 credits)
   </button>
 
-
 </div>
-
 
 @if (coursesResource.isLoading()) {
 
   <p>Loading courses...</p>
 
 }
-
 
 @if (coursesResource.error()) {
 
@@ -30,7 +26,6 @@
 
 }
 
-
 @if (coursesResource.value(); as courses) {
 
   <tms-course-list
@@ -38,3 +33,7 @@
   </tms-course-list>
 
 }
+
+<tms-enrollment-list></tms-enrollment-list>
+
+<tms-dashboard-summary></tms-dashboard-summary>

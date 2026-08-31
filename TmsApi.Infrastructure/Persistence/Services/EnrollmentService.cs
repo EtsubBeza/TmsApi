@@ -12,7 +12,6 @@ public class EnrollmentService(
     ILogger<EnrollmentService> logger)
     : IEnrollmentService
 {
-
     public Task<EnrollmentResponseDto?> GetByIdAsync(
         int courseId,
         int id,
@@ -27,8 +26,6 @@ public class EnrollmentService(
                 e.EnrolledAt))
             .FirstOrDefaultAsync(ct);
 
-
-
     public async Task<EnrollmentResponseDto> CreateAsync(
         int courseId,
         EnrollStudentRequest request,
@@ -41,22 +38,17 @@ public class EnrollmentService(
             EnrolledAt = DateTime.UtcNow
         };
 
-
         context.Enrollments.Add(enrollment);
 
         await context.SaveChangesAsync(ct);
-
 
         logger.LogInformation(
             "Student {StudentId} enrolled in Course {CourseId}",
             request.StudentId,
             courseId);
 
-
         return (await GetByIdAsync(courseId, enrollment.Id, ct))!;
     }
-
-
 
     public async Task<IReadOnlyList<EnrollmentResponseDto>> GetByCourseAsync(
         int courseId,
@@ -73,8 +65,6 @@ public class EnrollmentService(
             .ToListAsync(ct);
     }
 
-
-
     // CQRS methods
 
     public async Task<bool> ExistsAsync(
@@ -89,8 +79,6 @@ public class EnrollmentService(
                 ct);
     }
 
-
-
     public async Task AddAsync(
         Enrollment enrollment,
         CancellationToken ct)
@@ -99,14 +87,11 @@ public class EnrollmentService(
 
         await context.SaveChangesAsync(ct);
 
-
         logger.LogInformation(
             "Enrollment created Student:{StudentId} Course:{CourseId}",
             enrollment.StudentId,
             enrollment.CourseId);
     }
-
-
 
     public async Task<IReadOnlyList<Enrollment>> GetByStudentIdAsync(
         int studentId,
@@ -118,4 +103,43 @@ public class EnrollmentService(
             .AsNoTracking()
             .ToListAsync(ct);
     }
+
+    // Module 9 - Get all enrollments for SignalStore
+    public async Task<IReadOnlyList<Enrollment>> GetAllAsync(
+        CancellationToken ct)
+    {
+        return await context.Enrollments
+            .Include(e => e.Student)
+            .Include(e => e.Course)
+            .AsNoTracking()
+            .Where(e => !e.IsArchived)
+            .ToListAsync(ct);
+    }
+    
+    // Approve enrollment
+    public async Task<bool> ApproveAsync(
+        int enrollmentId,
+        CancellationToken ct)
+    {
+        var enrollment = await context.Enrollments
+            .FirstOrDefaultAsync(
+                e => e.Id == enrollmentId,
+                ct);
+
+        if (enrollment is null)
+        {
+            return false;
+        }
+
+        enrollment.Status = "Approved";
+
+        await context.SaveChangesAsync(ct);
+
+        logger.LogInformation(
+            "Enrollment {EnrollmentId} approved",
+            enrollmentId);
+
+        return true;
+    }
+
 }
